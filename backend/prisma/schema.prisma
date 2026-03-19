@@ -1,0 +1,94 @@
+datasource db {
+  provider = "mysql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id       Int    @id @default(autoincrement())
+  username String @unique
+  password String
+}
+
+model Teacher {
+  id         Int              @id @default(autoincrement())
+  name       String
+  email      String           @unique
+  department String
+  subjects   TeacherSubject[]
+  timetables Timetable[]
+}
+
+model Subject {
+  id             Int              @id @default(autoincrement())
+  name           String
+  department     String
+  hours_per_week Int
+  teachers       TeacherSubject[]
+  timetables     Timetable[]
+  classes        ClassSubject[]
+}
+
+model Class {
+  id         Int            @id @default(autoincrement())
+  name       String         @unique
+  timetables Timetable[]
+  subjects   ClassSubject[]
+}
+
+model Room {
+  id          Int         @id @default(autoincrement())
+  room_number String      @unique
+  capacity    Int
+  timetables  Timetable[]
+}
+
+model Timeslot {
+  id         Int         @id @default(autoincrement())
+  day        String // Monday, Tuesday, etc.
+  start_time String
+  end_time   String
+  timetables Timetable[]
+
+  @@unique([day, start_time, end_time])
+}
+
+model TeacherSubject {
+  id         Int     @id @default(autoincrement())
+  teacher_id Int
+  subject_id Int
+  teacher    Teacher @relation(fields: [teacher_id], references: [id])
+  subject    Subject @relation(fields: [subject_id], references: [id])
+
+  @@unique([teacher_id, subject_id])
+}
+
+model ClassSubject {
+  id         Int     @id @default(autoincrement())
+  class_id   Int
+  subject_id Int
+  class      Class   @relation(fields: [class_id], references: [id])
+  subject    Subject @relation(fields: [subject_id], references: [id])
+
+  @@unique([class_id, subject_id])
+}
+
+model Timetable {
+  id          Int      @id @default(autoincrement())
+  class_id    Int
+  subject_id  Int
+  teacher_id  Int
+  room_id     Int
+  timeslot_id Int
+  class       Class    @relation(fields: [class_id], references: [id])
+  subject     Subject  @relation(fields: [subject_id], references: [id])
+  teacher     Teacher  @relation(fields: [teacher_id], references: [id])
+  room        Room     @relation(fields: [room_id], references: [id])
+  timeslot    Timeslot @relation(fields: [timeslot_id], references: [id])
+
+  @@index([teacher_id, timeslot_id])
+  @@index([class_id, timeslot_id])
+  @@index([room_id, timeslot_id])
+}
