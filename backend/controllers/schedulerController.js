@@ -94,3 +94,39 @@ export const getTimetableByClass = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+export const getTimetableByTeacher = async (req, res) => {
+  const { teacherId } = req.params;
+  try {
+    const timetable = await prisma.timetable.findMany({
+      where: { teacher_id: parseInt(teacherId) },
+      include: {
+        subject: true,
+        class: true,
+        room: true,
+        timeslot: true,
+      },
+    });
+    res.json(timetable);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getTimetableByRoom = async (req, res) => {
+  const { roomId } = req.params;
+  try {
+    const timetable = await prisma.timetable.findMany({
+      where: { room_id: parseInt(roomId) },
+      include: {
+        subject: true,
+        class: true,
+        teacher: true,
+        timeslot: true,
+      },
+    });
+    res.json(timetable);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
