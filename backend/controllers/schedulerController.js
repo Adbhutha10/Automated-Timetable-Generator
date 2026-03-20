@@ -1,6 +1,13 @@
 import { prisma } from '../index.js';
 
+let isGenerating = false;
+
 export const generateTimetable = async (req, res) => {
+  if (isGenerating) {
+    return res.status(429).json({ error: 'Timetable generation is already in progress. Please wait.' });
+  }
+
+  isGenerating = true;
   try {
     // 1. Fetch all data
     const teachers = await prisma.teacher.findMany({ include: { subjects: true } });
@@ -191,6 +198,8 @@ export const generateTimetable = async (req, res) => {
   } catch (error) {
     console.error('Timetable Generation Error:', error);
     res.status(500).json({ error: 'Failed to generate timetable. Your existing schedule has been preserved.' });
+  } finally {
+    isGenerating = false;
   }
 };
 

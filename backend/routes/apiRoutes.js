@@ -2,7 +2,7 @@ import express from 'express';
 import * as generic from '../controllers/genericController.js';
 import * as scheduler from '../controllers/schedulerController.js';
 import * as authController from '../controllers/authController.js';
-import { auth, authorize, isAdmin } from '../middleware/auth.js';
+import { auth, authorize, isAdmin, isTeacherOwner, isStudentOfClass } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -44,8 +44,8 @@ router.put('/users/:id', auth, isAdmin, (req, res) => generic.updateItem('user',
 
 // Scheduler Routes
 router.post('/generate-timetable', auth, isAdmin, scheduler.generateTimetable);
-router.get('/timetable/class/:classId', auth, scheduler.getTimetableByClass);
-router.get('/timetable/teacher/:teacherId', auth, scheduler.getTimetableByTeacher);
+router.get('/timetable/class/:classId', auth, isStudentOfClass, scheduler.getTimetableByClass);
+router.get('/timetable/teacher/:teacherId', auth, isTeacherOwner, scheduler.getTimetableByTeacher);
 router.get('/timetable/room/:roomId', auth, scheduler.getTimetableByRoom);
 
 export default router;
