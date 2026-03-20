@@ -12,13 +12,14 @@ The core algorithm solves for 100% timetable utilization while adhering to stric
 - **Conflict Resolution**: Zero-conflict guarantee across Teachers, Rooms, and Class Groups.
 - **Randomized Distribution**: Labs are intelligently randomized across the week (Monday-Friday) to prevent morning/afternoon clustering.
 - **100% Resource Filling**: Automatically fills gaps with "Self-Study," "Library," or "Sports/Seminar" sessions if the primary curriculum is satisfied.
+- **Transactional Integrity**: Timetable generation is **atomic**. If a conflict or error occurs, the existing schedule remains untouched.
 - **Saturday Logic**: Custom handling for Saturday sessions (Minor Project/Internship) to ensure weekend compliance.
 
 ### 🍱 Multi-Role Dashboards
 Full **Role-Based Access Control (RBAC)** with specialized views:
 - **Admin Dashboard**: Global statistics, registry management (Staff, Rooms, Subjects), and one-click timetable generation.
 - **Teacher Dashboard**: Personalized weekly agenda with a professional horizontal layout.
-- **Student Dashboard**: Class-specific view with real-time updates and simple class selection.
+- **Student Dashboard**: Secured class-specific view. Students are linked to their groups by the Admin.
 
 ### 💎 Premium UI/UX
 Designed for a high-end software feel:
@@ -71,6 +72,9 @@ WT project/
 
 ## 🛡️ Security & Integration
 - **Auto-Role Assignment**: Faculty members are automatically recognized and assigned the `TEACHER` role during signup based on the institutional registry.
+- **Admin Email Whitelisting**: Restricted `ADMIN` role creation via secure `.env` configuration.
+- **Password Shield**: Enforced 6-character minimum complexity on both Frontend & Backend.
+- **Student Privacy Mapping**: Hard-linked student accounts to class groups to prevent cross-class schedule exposure.
 - **Global Middleware**: Centralized protection for all sensitive API routes.
 - **Data Integrity**: Foreign key constraints ensure that no session can be scheduled for a deleted room or teacher.
 
@@ -88,7 +92,7 @@ WT project/
    ```bash
    cd backend
    npm install
-   # Create a .env file with DATABASE_URL and JWT_SECRET
+   # Create a .env file with DATABASE_URL, JWT_SECRET, and ADMIN_EMAILS
    npx prisma generate
    npx prisma db push
    npm run dev
@@ -105,9 +109,10 @@ WT project/
 
 ## 📝 Usage Guide
 1. **Admin**: Head to `/admin`, manage your staff and subjects. Ensure all teachers are "mapped" to their subjects.
-2. **Generate**: Click **"Generate New Registry"** to create a fresh, optimized schedule.
-3. **Faculty**: Sign up with your professional email to automatically see your assigned timetable.
-4. **Export**: Use the **"Export PDF"** button on any dashboard to download your schedule instantly.
+2. **Student Mapping**: Use the **"Student Mapping"** tool to link registered students to their specific class groups.
+3. **Generate**: Click **"Generate New Registry"** to create a fresh, optimized schedule.
+4. **Faculty/Students**: Sign up with matching emails. Students will automatically see only their assigned class.
+5. **Export**: Use the **"Export PDF"** button on any dashboard to download your schedule instantly.
 
 ---
 
