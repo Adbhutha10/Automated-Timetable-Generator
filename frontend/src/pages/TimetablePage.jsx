@@ -102,29 +102,70 @@ const TimetablePage = () => {
     doc.setTextColor(100);
     doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 30);
 
-    const tableRows = timeslots.map(slot => {
-      const row = [ `${slot.start_time} - ${slot.end_time}` ];
-      days.forEach(day => {
-        const entry = getEntry(day, slot.id);
+    const tableRows = [];
+
+    days.forEach((day) => {
+      const row = [ day ];
+      let colSkip = 0;
+
+      timeslots.forEach((slot, colIndex) => {
+        if (colSkip > 0) {
+          colSkip--;
+          return;
+        }
+
+        const entry = getEntry(day, slot);
         if (entry) {
-          row.push(`${entry.subject.name}\n${viewType === 'class' ? entry.teacher.name : entry.class.name}\nRoom: ${entry.room.room_number}`);
+          let span = 1;
+          const isLab = entry.subject.name.toLowerCase().includes('lab');
+          const isProject = entry.subject.name.toLowerCase().includes('project');
+
+          if (isLab || isProject) {
+            let matchCount = 0;
+            for (let j = 1; j <= 2; j++) {
+              const nextSlot = timeslots[colIndex + j];
+              if (nextSlot) {
+                const nextEntry = getEntry(day, nextSlot);
+                if (nextEntry && nextEntry.subject_id === entry.subject_id) {
+                  matchCount++;
+                } else {
+                  break;
+                }
+              }
+            }
+            if (matchCount === 2) {
+              span = 3;
+              colSkip = 2;
+            }
+          }
+
+          const content = `${entry.subject.name}\n${viewType === 'class' ? entry.teacher.name : entry.class.name}\nRoom: ${entry.room.room_number}`;
+          if (span > 1) {
+            row.push({ 
+              content, 
+              colSpan: span,
+              styles: { fillColor: [249, 250, 251], fontStyle: 'bold', halign: 'center', valign: 'middle' }
+            });
+          } else {
+            row.push(content);
+          }
         } else {
           row.push('-');
         }
       });
-      return row;
+      tableRows.push(row);
     });
 
     doc.autoTable({
-      head: [['Time', ...days]],
+      head: [['Day', ...timeslots.map(s => s.start_time)]],
       body: tableRows,
       startY: 40,
       styles: { fontSize: 8, cellPadding: 2, halign: 'center' },
-      columnStyles: { 0: { fontStyle: 'bold', halign: 'left' } },
+      columnStyles: { 0: { fontStyle: 'bold', width: 25, halign: 'left' } },
       headStyles: { fillStyle: 'F', fillColor: [99, 102, 241], textColor: [255, 255, 255] },
     });
 
-    doc.save(`timetable_${viewType}_${selectedId}.pdf`);
+    doc.save(`timetable_horizontal_${viewType}_${selectedId}.pdf`);
   };
 
   const ViewToggle = ({ type, icon, label }) => (
@@ -227,50 +268,88 @@ const TimetablePage = () => {
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr>
-                <th className="p-6 bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-xs w-32 tracking-wider">Time</th>
-                {days.map(day => (
-                  <th key={day} className="p-6 bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-xs text-center border-l border-slate-200 tracking-wider">
-                    {day}
+                <th className="p-6 bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-xs w-32 tracking-wider">Day</th>
+                {timeslots.map(slot => (
+                  <th key={slot.id || slot.start_time} className="p-6 bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-xs text-center border-l border-slate-200 tracking-wider">
+                    {slot.start_time}
+                    <span className="block text-[8px] opacity-60 normal-case">{slot.end_time}</span>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {timeslots.map((slot) => (
-                <tr key={`${slot.start_time}-${slot.end_time}`} className="group">
-                  <td className="p-6 bg-slate-50/50 border-r border-slate-100 align-top">
-                    <span className="text-slate-900 font-bold block">{slot.start_time}</span>
-                    <span className="text-slate-500 text-xs font-medium">{slot.end_time}</span>
-                  </td>
-                  {days.map(day => {
-                    const entry = getEntry(day, slot);
-                    return (
-                      <td key={`${day}-${slot.start_time}`} className="p-3 border-l border-slate-100 align-top h-32 group-hover:bg-slate-50/30 transition-colors">
-                        {entry ? (
-                          <div className="h-full p-4 rounded-xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between group/entry hover:border-primary-300 hover:shadow-md transition-all cursor-pointer">
-                            <div>
-                              <div className="text-[10px] font-bold text-primary-600 uppercase tracking-widest mb-1.5 px-2 py-0.5 bg-primary-50 rounded-full w-fit">
-                                {entry.subject.name}
+              {days.map((day) => {
+                let colSkips = 0;
+                return (
+                  <tr key={day} className="group">
+                    <td className="p-6 bg-slate-50/50 border-r border-slate-100 align-top font-bold text-slate-900 border-b border-slate-100">
+                      {day}
+                    </td>
+                    {timeslots.map((slot, colIndex) => {
+                      if (colSkips > 0) {
+                        colSkips--;
+                        return null;
+                      }
+
+                      const entry = getEntry(day, slot);
+                      let span = 1;
+
+                      if (entry) {
+                        const isLab = entry.subject.name.toLowerCase().includes('lab');
+                        const isProject = entry.subject.name.toLowerCase().includes('project');
+
+                        if (isLab || isProject) {
+                           let matchCount = 0;
+                           for (let j = 1; j <= 2; j++) {
+                             const nextSlot = timeslots[colIndex + j];
+                             if (nextSlot) {
+                               const nextEntry = getEntry(day, nextSlot);
+                               if (nextEntry && nextEntry.subject_id === entry.subject_id) {
+                                 matchCount++;
+                               } else {
+                                 break;
+                               }
+                             }
+                           }
+                           if (matchCount === 2) {
+                             span = 3;
+                             colSkips = 2;
+                           }
+                        }
+                      }
+
+                      return (
+                        <td 
+                          key={`${day}-${slot.start_time}`} 
+                          colSpan={span}
+                          className={`p-3 border-l border-slate-100 align-top h-32 group-hover:bg-slate-50/30 transition-colors ${span > 1 ? 'min-w-[400px]' : 'min-w-[150px]'}`}
+                        >
+                          {entry ? (
+                            <div className={`h-full p-4 rounded-xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between group/entry hover:border-primary-300 hover:shadow-md transition-all cursor-pointer ${span > 1 ? 'bg-indigo-50/10 border-indigo-200 items-center text-center' : ''}`}>
+                              <div className={span > 1 ? 'flex flex-col items-center' : ''}>
+                                <div className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 px-2 py-0.5 rounded-full w-fit ${span > 1 ? 'bg-indigo-100 text-indigo-700 mx-auto' : 'bg-primary-50 text-primary-600'}`}>
+                                  {entry.subject.name}
+                                </div>
+                                <div className="text-sm font-bold text-slate-900 leading-snug px-1">
+                                  {viewType === 'class' ? entry.teacher.name : viewType === 'teacher' ? entry.class.name : entry.class.name}
+                                </div>
                               </div>
-                              <div className="text-sm font-bold text-slate-900 leading-snug px-1">
-                                {viewType === 'class' ? entry.teacher.name : viewType === 'teacher' ? entry.class.name : entry.class.name}
+                              <div className={`flex items-center text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-3 px-1 ${span > 1 ? 'justify-center' : ''}`}>
+                                <MapPin size={10} className="mr-1.5 text-slate-300" />
+                                {entry.room.room_number}
                               </div>
                             </div>
-                            <div className="flex items-center text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-3 px-1">
-                              <MapPin size={10} className="mr-1.5 text-slate-300" />
-                              {entry.room.room_number}
+                          ) : (
+                            <div className="h-full flex items-center justify-center">
+                              <div className="w-1.5 h-1.5 rounded-full bg-slate-200"></div>
                             </div>
-                          </div>
-                        ) : (
-                          <div className="h-full flex items-center justify-center">
-                            <div className="w-1.5 h-1.5 rounded-full bg-slate-200"></div>
-                          </div>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

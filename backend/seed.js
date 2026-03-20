@@ -72,6 +72,9 @@ async function main() {
     { name: 'MLT Lab', department: 'CSE', hours_per_week: 2 },
     { name: 'WT Lab (Web Technologies)', department: 'CSE', hours_per_week: 2 },
     { name: 'ACS Lab (Advanced Communication Skills)', department: 'CSE', hours_per_week: 2 },
+    { name: 'Mini Project / Internship', department: 'CSE', hours_per_week: 3 },
+    { name: 'Self Study / Library', department: 'CSE', hours_per_week: 0 },
+    { name: 'Sports / Seminar', department: 'CSE', hours_per_week: 0 },
   ];
 
   const createdSubjects = {};

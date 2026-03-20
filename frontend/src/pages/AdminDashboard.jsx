@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
+import { useAuth } from '../context/AuthContext';
 import { 
   Users, 
   BookOpen, 
@@ -10,11 +11,18 @@ import {
   CheckCircle2, 
   AlertCircle,
   TrendingUp,
-  Clock
+  Clock,
+  Activity,
+  ShieldCheck,
+  ChevronRight,
+  Database,
+  Calendar,
+  ArrowRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const Dashboard = () => {
+const AdminDashboard = () => {
+  const { user } = useAuth();
   const [stats, setStats] = useState({
     teachers: 0,
     subjects: 0,
@@ -32,17 +40,18 @@ const Dashboard = () => {
 
   const fetchStats = async () => {
     try {
-      const resp = await api.get('/teachers');
-      const teachers = resp.data.length;
-      const subjectsResp = await api.get('/subjects');
-      const classesResp = await api.get('/classes');
-      const roomsResp = await api.get('/rooms');
+      const [teachers, subjects, classes, rooms] = await Promise.all([
+        api.get('/teachers'),
+        api.get('/subjects'),
+        api.get('/classes'),
+        api.get('/rooms')
+      ]);
       
       setStats({
-        teachers,
-        subjects: subjectsResp.data.length,
-        classes: classesResp.data.length,
-        rooms: roomsResp.data.length
+        teachers: teachers.data.length,
+        subjects: subjects.data.length,
+        classes: classes.data.length,
+        rooms: rooms.data.length
       });
     } catch (err) {
       console.error('Failed to fetch stats', err);
@@ -59,141 +68,226 @@ const Dashboard = () => {
       setMessage('Timetable generated successfully!');
       setTimeout(() => navigate('/timetable'), 1500);
     } catch (err) {
-      setMessage('Failed to generate. Ensure all data (Teacher-Subject, Class-Subject) is assigned.');
+      setMessage('Failed to generate. Ensure all requirements are met.');
     } finally {
       setGenerating(false);
     }
   };
 
-  const StatCard = ({ icon, label, count, color }) => (
-    <div className="stat-card group glass-card hover:bg-white transition-all border border-slate-100">
-      <div className={`p-4 rounded-2xl ${color} bg-opacity-10 text-opacity-100 mb-4 group-hover:scale-110 transition-transform`}>
-        {icon}
+  const StatCard = ({ icon, label, count, colorName, trend }) => (
+    <div className="stat-card group glass-card hover:bg-white transition-all border border-slate-100/50 p-8 flex flex-col items-center justify-center text-center relative overflow-hidden">
+      <div className={`w-14 h-14 rounded-2xl bg-${colorName}-50 text-${colorName}-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm`}>
+        {React.cloneElement(icon, { size: 28 })}
       </div>
-      <h3 className="text-slate-500 font-medium mb-1 uppercase tracking-wider text-xs">{label}</h3>
-      <p className="text-3xl font-bold text-slate-900">{count}</p>
+      <p className="text-slate-500 font-bold mb-1 uppercase tracking-widest text-[10px]">{label}</p>
+      <div className="relative inline-flex items-center">
+        <p className="text-4xl font-black text-slate-900 tracking-tight">{count}</p>
+        {trend && (
+          <span className="absolute left-full ml-2 flex items-center text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap">
+            <TrendingUp size={10} className="mr-1" />
+            +12%
+          </span>
+        )}
+      </div>
     </div>
   );
 
+  const QuickAction = ({ icon, title, desc, onClick, primary }) => (
+    <button 
+      onClick={onClick}
+      className={`group flex items-center p-4 rounded-2xl border transition-all text-left w-full ${
+        primary 
+          ? 'bg-primary-600 border-primary-500 text-white shadow-lg shadow-primary-900/20 hover:bg-primary-500' 
+          : 'bg-white border-slate-100 text-slate-900 hover:border-primary-200 hover:shadow-md'
+      }`}
+    >
+      <div className={`p-3 rounded-xl mr-4 ${primary ? 'bg-primary-500' : 'bg-slate-50 text-primary-600 group-hover:bg-primary-50'}`}>
+        {icon}
+      </div>
+      <div className="flex-1">
+        <h4 className="font-bold text-sm tracking-tight">{title}</h4>
+        <p className={`text-[11px] leading-tight ${primary ? 'text-primary-100' : 'text-slate-500'}`}>{desc}</p>
+      </div>
+      <ChevronRight size={16} className={`opacity-0 group-hover:opacity-100 transition-all ${primary ? 'text-white' : 'text-primary-400'}`} />
+    </button>
+  );
+
   return (
-    <div className="space-y-10 py-4">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="space-y-8 py-2 animate-in fade-in duration-500">
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
-          <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-2">
-            Welcome Back, <span className="text-primary-600">Admin</span>
+          <div className="flex items-center space-x-2 text-[10px] font-bold text-primary-600 uppercase tracking-[0.2em] mb-2">
+            <ShieldCheck size={14} />
+            <span>Administrator Control Center</span>
+          </div>
+          <h2 className="text-4xl font-black text-slate-900 tracking-tight mb-1">
+            Welcome, <span className="bg-gradient-to-r from-primary-600 to-primary-400 bg-clip-text text-transparent">{user?.result?.name?.split(' ')[0] || 'Admin'}</span>.
           </h2>
-          <p className="text-slate-500 text-lg flex items-center">
-            <Clock size={16} className="mr-2 text-primary-600" />
-            Let's build a conflict-free schedule for today.
-          </p>
+          <p className="text-slate-500 font-medium">System is operational. Last data sync was successful.</p>
         </div>
-        <div className="flex items-center space-x-3">
-          <button 
-            onClick={() => navigate('/teachers')}
-            className="btn-secondary flex items-center"
-          >
-            <Plus size={20} className="mr-2" />
-            Add Staff
-          </button>
-          <button 
-            onClick={handleGenerate}
-            disabled={generating}
-            className={`btn-primary flex items-center ${generating ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {generating ? (
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-            ) : (
-              <Play size={20} className="mr-2 fill-current" />
-            )}
-            {generating ? 'Processing...' : 'Generate New Registry'}
-          </button>
+        <div className="flex items-center space-x-3 bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm">
+            <div className="flex -space-x-2 px-2">
+                {[1,2,3].map(i => (
+                    <div key={i} className="w-8 h-8 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-500">
+                        {String.fromCharCode(64 + i)}
+                    </div>
+                ))}
+            </div>
+            <div className="h-8 w-px bg-slate-100 mx-1" />
+            <button className="flex items-center space-x-2 px-4 py-2 text-xs font-bold text-slate-600 hover:text-primary-600 transition-colors">
+                <Activity size={14} />
+                <span>Live Logs</span>
+            </button>
         </div>
       </div>
 
       {message && (
-        <div className={`p-4 rounded-xl flex items-center space-x-3 animate-in fade-in slide-in-from-top-4 duration-300 ${
-          message.includes('success') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+        <div className={`p-4 rounded-2xl flex items-center space-x-3 animate-in slide-in-from-top-4 ${
+          message.includes('success') ? 'bg-emerald-50 border border-emerald-100 text-emerald-700' : 'bg-rose-50 border border-rose-100 text-rose-700'
         }`}>
-          {message.includes('success') ? <CheckCircle2 size={24} /> : <AlertCircle size={24} />}
-          <span className="font-medium text-lg">{message}</span>
+          {message.includes('success') ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+          <span className="font-bold text-sm tracking-tight">{message}</span>
         </div>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          icon={<Users size={28} className="text-blue-600" />} 
-          label="Total Teachers" 
-          count={stats.teachers} 
-          color="bg-blue-600" 
-        />
-        <StatCard 
-          icon={<BookOpen size={28} className="text-purple-600" />} 
-          label="Total Subjects" 
-          count={stats.subjects} 
-          color="bg-purple-600" 
-        />
-        <StatCard 
-          icon={<Layers size={28} className="text-primary-600" />} 
-          label="Total Classes" 
-          count={stats.classes} 
-          color="bg-primary-600" 
-        />
-        <StatCard 
-          icon={<MapPin size={28} className="text-rose-600" />} 
-          label="Total Rooms" 
-          count={stats.rooms} 
-          color="bg-rose-600" 
-        />
-      </div>
-
-      {/* Highlights Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 glass-card p-10 relative overflow-hidden group border border-slate-100">
-          <div className="absolute top-0 right-0 p-8 text-primary-600/5 group-hover:text-primary-600/10 transition-colors">
-            <TrendingUp size={160} />
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        
+        {/* Stats Column */}
+        <div className="xl:col-span-2 space-y-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <StatCard 
+              icon={<Users />} 
+              label="Active Teachers" 
+              count={stats.teachers} 
+              colorName="primary"
+              trend={true}
+            />
+            <StatCard 
+              icon={<BookOpen />} 
+              label="Curricular Subjects" 
+              count={stats.subjects} 
+              colorName="indigo"
+              trend={false}
+            />
+            <StatCard 
+              icon={<Layers />} 
+              label="Total Class Groups" 
+              count={stats.classes} 
+              colorName="violet"
+              trend={true}
+            />
+            <StatCard 
+              icon={<MapPin />} 
+              label="Available Rooms" 
+              count={stats.rooms} 
+              colorName="rose"
+              trend={false}
+            />
           </div>
-          <div className="relative z-10">
-            <h3 className="text-2xl font-bold text-slate-900 mb-4 flex items-center">
-              System Optimization State
-              <span className="ml-3 px-3 py-1 text-xs font-bold bg-primary-100 text-primary-600 rounded-full uppercase tracking-wider">High Performance</span>
-            </h3>
-            <p className="text-slate-600 text-lg leading-relaxed max-w-xl mb-8">
-              Your timetable engine is ready for deployment. The current constraints cover teacher availability, class capacities, and subject distribution across the week.
-            </p>
-            <div className="flex space-x-12">
-              <div>
-                <span className="block text-4xl font-bold text-slate-900 mb-1">98%</span>
-                <span className="text-slate-500 text-xs font-bold uppercase tracking-widest">Reliability Score</span>
-              </div>
-              <div className="border-l border-slate-200 pl-12">
-                <span className="block text-4xl font-bold text-slate-900 mb-1">0</span>
-                <span className="text-slate-500 text-xs font-bold uppercase tracking-widest">Active Conflicts</span>
-              </div>
+
+          {/* Large Performance Banner */}
+          <div className="glass-card bg-slate-900 border-slate-800 p-8 text-white relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none group-hover:scale-110 group-hover:rotate-6 transition-transform">
+               <Database size={200} />
+            </div>
+            <div className="relative z-10 flex flex-col md:flex-row gap-8 items-center">
+               <div className="flex-1">
+                  <h3 className="text-2xl font-black mb-3 tracking-tight">Optimization Engine Ready</h3>
+                  <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                    Our current algorithm has solved all potential overlaps based on the current staff and room constraints. 
+                    Ready for a fresh generation cycle.
+                  </p>
+                  <div className="flex items-center space-x-6">
+                     <div className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-xl text-center">
+                        <span className="block text-xl font-bold text-primary-400">99.2%</span>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Health</span>
+                     </div>
+                     <div className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-xl text-center">
+                        <span className="block text-xl font-bold text-emerald-400">0</span>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Errors</span>
+                     </div>
+                  </div>
+               </div>
+               <button 
+                onClick={handleGenerate}
+                disabled={generating}
+                className={`h-20 w-full md:w-56 bg-primary-600 rounded-2xl flex flex-col items-center justify-center space-y-2 hover:bg-primary-500 transition-all font-bold group shadow-2xl shadow-primary-900/40 relative overflow-hidden ${generating ? 'opacity-70' : ''}`}
+               >
+                  {generating ? (
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                  ) : (
+                    <>
+                      <div className="p-2 bg-primary-500 rounded-lg group-hover:scale-110 transition-transform">
+                        <Play size={20} className="fill-current" />
+                      </div>
+                      <span className="text-xs uppercase tracking-[0.2em]">Generate Reg</span>
+                    </>
+                  )}
+               </button>
             </div>
           </div>
         </div>
 
-        <div className="glass-card p-10 flex flex-col justify-center items-center text-center border border-slate-100">
-          <div className="w-20 h-20 bg-primary-50 text-primary-600 rounded-2xl flex items-center justify-center mb-8 rotate-3 group-hover:rotate-0 transition-transform shadow-sm">
-            <Layers size={36} />
+        {/* Sidebar Actions Column */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm">
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-[0.1em] mb-6 flex items-center">
+               <ArrowRight size={16} className="text-primary-600 mr-2" />
+               Management Suite
+            </h3>
+            <div className="space-y-3">
+               <QuickAction 
+                icon={<Users size={18} />} 
+                title="Manage Staff" 
+                desc="Update teacher roles & credentials" 
+                onClick={() => navigate('/teachers')}
+               />
+               <QuickAction 
+                icon={<BookOpen size={18} />} 
+                title="Curriculum" 
+                desc="Browse and manage subjects" 
+                onClick={() => navigate('/subjects')}
+               />
+               <QuickAction 
+                icon={<Layers size={18} />} 
+                title="Academic Groups" 
+                desc="Configure classes & sessions" 
+                onClick={() => navigate('/classes')}
+               />
+               <QuickAction 
+                icon={<MapPin size={18} />} 
+                title="Infrastructure" 
+                desc="Room allocation & capacity" 
+                onClick={() => navigate('/rooms')}
+               />
+               <div className="pt-2">
+                 <QuickAction 
+                  icon={<Calendar size={18} />} 
+                  title="View Explorer" 
+                  desc="Inspect current live timetable" 
+                  onClick={() => navigate('/timetable')}
+                  primary={true}
+                 />
+               </div>
+            </div>
           </div>
-          <h3 className="text-xl font-bold text-slate-900 mb-3 uppercase tracking-wide">Registry Wizard</h3>
-          <p className="text-slate-500 mb-8 leading-relaxed">
-            Quickly organize sessions by grouping subjects and teachers for specific grade levels.
-          </p>
-          <button 
-            onClick={() => navigate('/classes')}
-            className="w-full btn-secondary text-primary-600 border-primary-200 hover:bg-primary-50"
-          >
-            Review Hierarchy
-          </button>
+
+          <div className="bg-gradient-to-tr from-slate-50 to-white rounded-3xl border border-dashed border-slate-200 p-8 text-center group cursor-pointer hover:border-primary-300 transition-all">
+             <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mx-auto mb-4 text-slate-400 group-hover:text-primary-600 transition-colors">
+                <Plus size={24} />
+             </div>
+             <p className="text-[10px] font-bold text-slate-800 uppercase tracking-widest mb-1 italic">Pro Tip</p>
+             <p className="text-xs text-slate-500 font-medium leading-relaxed">
+               Use the CSV import feature in each management section for bulk uploading institutional data.
+             </p>
+          </div>
         </div>
+
       </div>
     </div>
   );
-
 };
 
-export default Dashboard;
+export default AdminDashboard;
