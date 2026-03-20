@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import { Calendar, Clock, MapPin, Download, Printer, User } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const TeacherDashboard = () => {
   const { user } = useAuth();
@@ -55,6 +57,83 @@ const TeacherDashboard = () => {
     );
   };
 
+  const exportPDF = () => {
+    const doc = new jsPDF('landscape');
+    const title = `My Schedule - Prof. ${teacher.name} (${teacher.department})`;
+    
+    doc.setFontSize(20);
+    doc.setTextColor(40);
+    doc.text(title, 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 30);
+
+    const tableRows = [];
+
+    days.forEach((day) => {
+      const row = [ day ];
+      let colSkip = 0;
+
+      timeslots.forEach((slot, colIndex) => {
+        if (colSkip > 0) {
+          colSkip--;
+          return;
+        }
+
+        const entry = getEntry(day, slot);
+        if (entry) {
+          let span = 1;
+          const isLab = entry.subject.name.toLowerCase().includes('lab');
+          const isProject = entry.subject.name.toLowerCase().includes('project');
+
+          if (isLab || isProject) {
+            let matchCount = 0;
+            for (let j = 1; j <= 2; j++) {
+              const nextSlot = timeslots[colIndex + j];
+              if (nextSlot) {
+                const nextEntry = getEntry(day, nextSlot);
+                if (nextEntry && nextEntry.subject_id === entry.subject_id) {
+                  matchCount++;
+                } else {
+                  break;
+                }
+              }
+            }
+            if (matchCount === 2) {
+              span = 3;
+              colSkip = 2;
+            }
+          }
+
+          const content = `${entry.subject.name}\nClass: ${entry.class.name}\nRoom: ${entry.room.room_number}`;
+          if (span > 1) {
+            row.push({ 
+              content, 
+              colSpan: span,
+              styles: { fillColor: [249, 250, 251], fontStyle: 'bold', halign: 'center', valign: 'middle' }
+            });
+          } else {
+            row.push(content);
+          }
+        } else {
+          row.push('-');
+        }
+      });
+      tableRows.push(row);
+    });
+
+    autoTable(doc, {
+      head: [['Day', ...timeslots.map(s => s.start_time)]],
+      body: tableRows,
+      startY: 40,
+      styles: { fontSize: 8, cellPadding: 2, halign: 'center' },
+      columnStyles: { 0: { fontStyle: 'bold', width: 25, halign: 'left' } },
+      headStyles: { fillStyle: 'F', fillColor: [99, 102, 241], textColor: [255, 255, 255] },
+    });
+
+    doc.save(`teacher_schedule_${teacher.name.replace(/\s/g, '_')}.pdf`);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full min-h-[400px]">
@@ -81,9 +160,9 @@ const TeacherDashboard = () => {
           <p className="text-slate-500">Welcome, Professor <span className="text-primary-600 font-bold">{teacher.name}</span>. Here is your weekly agenda.</p>
         </div>
         <div className="flex items-center space-x-3">
-          <button onClick={() => window.print()} className="btn-secondary flex items-center">
-            <Printer size={18} className="mr-2" />
-            Print Schedule
+          <button onClick={exportPDF} className="btn-primary flex items-center shadow-lg shadow-primary-900/20">
+            <Download size={18} className="mr-2" />
+            Export PDF
           </button>
         </div>
       </div>

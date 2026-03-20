@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Calendar, Clock, MapPin, Search, ChevronRight, BookOpen } from 'lucide-react';
+import { Calendar, Clock, MapPin, Search, ChevronRight, BookOpen, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const StudentDashboard = () => {
   const [timetable, setTimetable] = useState([]);
@@ -68,6 +70,84 @@ const StudentDashboard = () => {
     );
   };
 
+  const exportPDF = () => {
+    const selectedClass = classes.find(c => c.id == selectedClassId);
+    const doc = new jsPDF('landscape');
+    const title = `Class Timetable - ${selectedClass?.name || 'Schedule'}`;
+    
+    doc.setFontSize(20);
+    doc.setTextColor(40);
+    doc.text(title, 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 30);
+
+    const tableRows = [];
+
+    days.forEach((day) => {
+      const row = [ day ];
+      let colSkip = 0;
+
+      timeslots.forEach((slot, colIndex) => {
+        if (colSkip > 0) {
+          colSkip--;
+          return;
+        }
+
+        const entry = getEntry(day, slot);
+        if (entry) {
+          let span = 1;
+          const isLab = entry.subject.name.toLowerCase().includes('lab');
+          const isProject = entry.subject.name.toLowerCase().includes('project');
+
+          if (isLab || isProject) {
+            let matchCount = 0;
+            for (let j = 1; j <= 2; j++) {
+              const nextSlot = timeslots[colIndex + j];
+              if (nextSlot) {
+                const nextEntry = getEntry(day, nextSlot);
+                if (nextEntry && nextEntry.subject_id === entry.subject_id) {
+                  matchCount++;
+                } else {
+                  break;
+                }
+              }
+            }
+            if (matchCount === 2) {
+              span = 3;
+              colSkip = 2;
+            }
+          }
+
+          const content = `${entry.subject.name}\nProf: ${entry.teacher.name}\nRoom: ${entry.room.room_number}`;
+          if (span > 1) {
+            row.push({ 
+              content, 
+              colSpan: span,
+              styles: { fillColor: [249, 250, 251], fontStyle: 'bold', halign: 'center', valign: 'middle' }
+            });
+          } else {
+            row.push(content);
+          }
+        } else {
+          row.push('-');
+        }
+      });
+      tableRows.push(row);
+    });
+
+    autoTable(doc, {
+      head: [['Day', ...timeslots.map(s => s.start_time)]],
+      body: tableRows,
+      startY: 40,
+      styles: { fontSize: 8, cellPadding: 2, halign: 'center' },
+      columnStyles: { 0: { fontStyle: 'bold', width: 25, halign: 'left' } },
+      headStyles: { fillStyle: 'F', fillColor: [99, 102, 241], textColor: [255, 255, 255] },
+    });
+
+    doc.save(`timetable_${selectedClass?.name || 'class'}.pdf`);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full min-h-[400px]">
@@ -83,23 +163,29 @@ const StudentDashboard = () => {
           <h2 className="text-3xl font-bold text-slate-900 mb-2">Class Schedule</h2>
           <p className="text-slate-500">Stay organized with your up-to-date weekly class registry.</p>
         </div>
-        <div className="w-full md:w-64">
-          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Select Your Class</label>
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <select
-              className="input-field w-full pl-12 h-12 appearance-none cursor-pointer font-bold text-slate-700"
-              value={selectedClassId}
-              onChange={(e) => setSelectedClassId(e.target.value)}
-            >
-              {classes.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-              <ChevronRight size={18} className="rotate-90" />
+        <div className="flex flex-col md:flex-row items-end gap-4">
+          <div className="w-full md:w-64">
+            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Select Your Class</label>
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <select
+                className="input-field w-full pl-12 h-12 appearance-none cursor-pointer font-bold text-slate-700"
+                value={selectedClassId}
+                onChange={(e) => setSelectedClassId(e.target.value)}
+              >
+                {classes.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                <ChevronRight size={18} className="rotate-90" />
+              </div>
             </div>
           </div>
+          <button onClick={exportPDF} className="btn-primary flex items-center h-12 shadow-lg shadow-primary-900/20">
+            <Download size={18} className="mr-2" />
+            Export PDF
+          </button>
         </div>
       </div>
 

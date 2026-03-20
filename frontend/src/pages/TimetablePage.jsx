@@ -14,7 +14,7 @@ import {
   Plus
 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const TimetablePage = () => {
   const [viewType, setViewType] = useState('class'); // class, teacher, room
@@ -156,7 +156,7 @@ const TimetablePage = () => {
       tableRows.push(row);
     });
 
-    doc.autoTable({
+    autoTable(doc, {
       head: [['Day', ...timeslots.map(s => s.start_time)]],
       body: tableRows,
       startY: 40,
