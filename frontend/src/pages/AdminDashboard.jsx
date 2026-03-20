@@ -29,6 +29,7 @@ const AdminDashboard = () => {
     classes: 0,
     rooms: 0
   });
+  const [unmappedTeachers, setUnmappedTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [message, setMessage] = useState('');
@@ -40,11 +41,12 @@ const AdminDashboard = () => {
 
   const fetchStats = async () => {
     try {
-      const [teachers, subjects, classes, rooms] = await Promise.all([
+      const [teachers, subjects, classes, rooms, mappings] = await Promise.all([
         api.get('/teachers'),
         api.get('/subjects'),
         api.get('/classes'),
-        api.get('/rooms')
+        api.get('/rooms'),
+        api.get('/teacher-subjects')
       ]);
       
       setStats({
@@ -53,6 +55,12 @@ const AdminDashboard = () => {
         classes: classes.data.length,
         rooms: rooms.data.length
       });
+
+      // Find teachers with no subjects mapped
+      const mappedTeacherIds = new Set(mappings.data.map(m => m.teacher_id));
+      const unmapped = teachers.data.filter(t => !mappedTeacherIds.has(t.id));
+      setUnmappedTeachers(unmapped);
+
     } catch (err) {
       console.error('Failed to fetch stats', err);
     } finally {
@@ -148,6 +156,36 @@ const AdminDashboard = () => {
         }`}>
           {message.includes('success') ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
           <span className="font-bold text-sm tracking-tight">{message}</span>
+        </div>
+      )}
+
+      {unmappedTeachers.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 animate-in slide-in-from-top-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="flex items-start space-x-4">
+            <div className="bg-amber-100 p-3 rounded-2xl text-amber-600 border border-amber-200">
+               <AlertCircle size={24} />
+            </div>
+            <div>
+              <h4 className="text-amber-900 font-black text-lg tracking-tight mb-1">Incomplete Staff Configuration</h4>
+              <p className="text-amber-700/80 text-sm max-w-2xl font-medium leading-relaxed">
+                The following teachers are registered but have <span className="font-bold text-amber-900">no subjects assigned</span>. They will be ignored during timetable generation:
+                <span className="ml-1 inline-flex flex-wrap gap-2 mt-2">
+                  {unmappedTeachers.map(t => (
+                    <span key={t.id} className="bg-amber-200/50 text-amber-900 px-2 py-0.5 rounded-lg text-[10px] font-bold border border-amber-300/30">
+                      {t.name}
+                    </span>
+                  ))}
+                </span>
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => navigate('/subjects')}
+            className="w-full md:w-auto px-6 py-3 bg-white border-2 border-amber-200 text-amber-900 font-bold rounded-2xl hover:bg-amber-100 transition-all flex items-center justify-center whitespace-nowrap shadow-sm group"
+          >
+            Fix Mappings
+            <ArrowRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
+          </button>
         </div>
       )}
 
