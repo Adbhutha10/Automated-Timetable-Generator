@@ -35,9 +35,12 @@ router.get('/class-subjects', auth, (req, res) => generic.getItems('classSubject
 router.post('/class-subjects', auth, isAdmin, (req, res) => generic.createItem('classSubject', req, res));
 router.delete('/class-subjects/:id', auth, isAdmin, (req, res) => generic.deleteItem('classSubject', req, res));
 
-// Auth Routes
 router.post('/auth/signup', authController.signup);
 router.post('/auth/login', authController.login);
+
+// User Management (Admin only)
+router.get('/users', auth, isAdmin, (req, res) => generic.getItems('user', req, res));
+router.put('/users/:id', auth, isAdmin, (req, res) => generic.updateItem('user', req, res));
 
 // Scheduler Routes
 router.post('/generate-timetable', auth, isAdmin, scheduler.generateTimetable);

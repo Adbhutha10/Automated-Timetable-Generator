@@ -25,6 +25,7 @@ import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import ManagementPage from './pages/ManagementPage';
 import TimetablePage from './pages/TimetablePage';
+import StudentMappingPage from './pages/StudentMappingPage';
 
 const DashboardRedirect = () => {
   const { user } = useAuth();
@@ -202,6 +203,11 @@ const App = () => {
             <Route path="/student-view" element={
               <ProtectedRoute allowedRoles={['STUDENT']}>
                 <StudentDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/student-mapping" element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <StudentMappingPage />
               </ProtectedRoute>
             } />
           </Routes>

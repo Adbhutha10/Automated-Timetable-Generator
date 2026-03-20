@@ -12,11 +12,28 @@ export const signup = async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 12);
     
-    // Check if the email exists in the Teacher registry
+    // Role Resolution Logic
+    let finalRole = 'STUDENT';
     const isTeacher = await prisma.teacher.findUnique({ where: { email } });
-    const finalRole = isTeacher ? 'TEACHER' : (role || 'STUDENT');
+    
+    if (isTeacher) {
+      finalRole = 'TEACHER';
+    } else if (role === 'ADMIN') {
+      const allowedAdmins = process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(',') : [];
+      if (allowedAdmins.includes(email)) {
+        finalRole = 'ADMIN';
+      } else {
+        return res.status(403).json({ message: 'Unauthorized: This email is not on the Admin whitelist.' });
+      }
+    } else {
+      finalRole = role === 'ADMIN' ? 'STUDENT' : (role || 'STUDENT');
+    }
 
     const user = await prisma.user.create({
       data: {
@@ -28,13 +45,14 @@ export const signup = async (req, res) => {
     });
 
     const token = jwt.sign(
-      { email: user.email, id: user.id, role: user.role },
+      { email: user.email, id: user.id, role: user.role, class_id: user.class_id },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
     res.status(201).json({ result: user, token });
   } catch (error) {
+    console.error('Signup Error:', error);
     res.status(500).json({ message: 'Something went wrong' });
   }
 };
@@ -53,7 +71,7 @@ export const login = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { email: existingUser.email, id: existingUser.id, role: existingUser.role },
+      { email: existingUser.email, id: existingUser.id, role: existingUser.role, class_id: existingUser.class_id },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );

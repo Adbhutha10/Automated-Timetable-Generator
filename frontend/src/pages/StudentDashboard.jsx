@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { Calendar, Clock, MapPin, Search, ChevronRight, BookOpen, Download } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const StudentDashboard = () => {
+  const { user } = useAuth();
   const [timetable, setTimetable] = useState([]);
   const [classes, setClasses] = useState([]);
-  const [selectedClassId, setSelectedClassId] = useState('');
+  const [selectedClassId, setSelectedClassId] = useState(user?.result?.class_id || '');
   const [loading, setLoading] = useState(true);
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -164,28 +166,25 @@ const StudentDashboard = () => {
           <p className="text-slate-500">Stay organized with your up-to-date weekly class registry.</p>
         </div>
         <div className="flex flex-col md:flex-row items-end gap-4">
-          <div className="w-full md:w-64">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block ml-1">Select Your Class</label>
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <select
-                className="input-field w-full pl-12 h-12 appearance-none cursor-pointer font-bold text-slate-700"
-                value={selectedClassId}
-                onChange={(e) => setSelectedClassId(e.target.value)}
-              >
-                {classes.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                <ChevronRight size={18} className="rotate-90" />
-              </div>
+          {!selectedClassId ? (
+            <div className="bg-amber-50 border border-amber-200 px-4 py-3 rounded-2xl flex items-center text-amber-700 text-sm font-bold">
+              <Search size={18} className="mr-2" />
+              Not assigned to any class. Contact Admin.
             </div>
-          </div>
-          <button onClick={exportPDF} className="btn-primary flex items-center h-12 shadow-lg shadow-primary-900/20">
-            <Download size={18} className="mr-2" />
-            Export PDF
-          </button>
+          ) : (
+            <>
+              <div className="bg-primary-50 px-4 py-2 rounded-xl border border-primary-100 flex items-center h-12 shadow-sm">
+                <BookOpen size={18} className="text-primary-600 mr-2" />
+                <span className="text-xs font-bold text-primary-700 uppercase tracking-wider">
+                  My Class: {classes.find(c => c.id == selectedClassId)?.name || 'Loading...'}
+                </span>
+              </div>
+              <button onClick={exportPDF} className="btn-primary flex items-center h-12 shadow-lg shadow-primary-900/20 px-6">
+                <Download size={18} className="mr-2" />
+                Export PDF
+              </button>
+            </>
+          )}
         </div>
       </div>
 

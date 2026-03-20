@@ -25,6 +25,12 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+
     setLoading(true);
 
     const result = await signup(formData);

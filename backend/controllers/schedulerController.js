@@ -17,9 +17,6 @@ export const generateTimetable = async (req, res) => {
       return dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
     });
 
-    // 2. Clear existing entries
-    await prisma.timetable.deleteMany();
-
     const timetableEntries = [];
     const usedSlots = new Set(); // To track teacher-slot, room-slot, class-slot conflicts
 
@@ -179,15 +176,21 @@ export const generateTimetable = async (req, res) => {
       }
     }
 
-    // ─── 7. Save to Database ──────────────────────────────────────
-    if (timetableEntries.length > 0) {
-      await prisma.timetable.createMany({ data: timetableEntries });
-    }
+    // ─── 7. Save to Database (Transactional) ──────────────────────
+    await prisma.$transaction(async (tx) => {
+      // 1. Clear old data
+      await tx.timetable.deleteMany();
+      
+      // 2. Save new data
+      if (timetableEntries.length > 0) {
+        await tx.timetable.createMany({ data: timetableEntries });
+      }
+    });
 
     res.json({ message: 'Timetable generated successfully with advanced constraints', count: timetableEntries.length });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to generate timetable' });
+    console.error('Timetable Generation Error:', error);
+    res.status(500).json({ error: 'Failed to generate timetable. Your existing schedule has been preserved.' });
   }
 };
 

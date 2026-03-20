@@ -300,6 +300,12 @@ const AdminDashboard = () => {
                 desc="Room allocation & capacity" 
                 onClick={() => navigate('/rooms')}
                />
+               <QuickAction 
+                icon={<Users size={18} />} 
+                title="Student Mapping" 
+                desc="Link students to their classes" 
+                onClick={() => navigate('/student-mapping')}
+               />
                <div className="pt-2">
                  <QuickAction 
                   icon={<Calendar size={18} />} 

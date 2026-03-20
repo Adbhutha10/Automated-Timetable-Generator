@@ -13,6 +13,8 @@ model User {
   password String
   name     String?
   role     String  @default("STUDENT") // ADMIN, TEACHER, STUDENT
+  class_id Int?
+  class    Class?  @relation(fields: [class_id], references: [id])
 }
 
 model Teacher {
@@ -39,6 +41,7 @@ model Class {
   name       String         @unique
   timetables Timetable[]
   subjects   ClassSubject[]
+  users      User[]
 }
 
 model Room {
