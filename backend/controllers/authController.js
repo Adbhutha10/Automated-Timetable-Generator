@@ -13,12 +13,17 @@ export const signup = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
+    
+    // Check if the email exists in the Teacher registry
+    const isTeacher = await prisma.teacher.findUnique({ where: { email } });
+    const finalRole = isTeacher ? 'TEACHER' : (role || 'STUDENT');
+
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         name,
-        role: role || 'STUDENT'
+        role: finalRole
       }
     });
 

@@ -9,15 +9,7 @@ const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const timeslots = [
-    { id: 1, start_time: '09:20', end_time: '10:10', label: 'Period 1' },
-    { id: 2, start_time: '10:10', end_time: '11:00', label: 'Period 2' },
-    { id: 3, start_time: '11:10', end_time: '12:00', label: 'Period 3' },
-    { id: 4, start_time: '12:00', end_time: '12:50', label: 'Period 4' },
-    { id: 5, start_time: '13:30', end_time: '14:20', label: 'Period 5' },
-    { id: 6, start_time: '14:20', end_time: '15:10', label: 'Period 6' },
-    { id: 7, start_time: '15:10', end_time: '15:50', label: 'Period 7' },
-  ];
+  const [timeslots, setTimeslots] = useState([]);
 
   useEffect(() => {
     const fetchClasses = async () => {
@@ -31,7 +23,27 @@ const StudentDashboard = () => {
         setLoading(false);
       }
     };
+
+    const fetchTimeslots = async () => {
+      try {
+        const resp = await api.get('/timeslots');
+        const seen = new Set();
+        const unique = resp.data
+          .filter(t => {
+            const key = `${t.start_time}-${t.end_time}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          })
+          .sort((a, b) => a.start_time.localeCompare(b.start_time));
+        setTimeslots(unique);
+      } catch (err) {
+        console.error('Failed to fetch timeslots:', err);
+      }
+    };
+
     fetchClasses();
+    fetchTimeslots();
   }, []);
 
   useEffect(() => {
@@ -48,8 +60,12 @@ const StudentDashboard = () => {
     }
   }, [selectedClassId]);
 
-  const getEntry = (day, timeslotId) => {
-    return timetable.find(t => t.timeslot.day === day && t.timeslot_id === timeslotId);
+  const getEntry = (day, slot) => {
+    return timetable.find(t => 
+      t.timeslot.day === day && 
+      t.timeslot.start_time === slot.start_time && 
+      t.timeslot.end_time === slot.end_time
+    );
   };
 
   if (loading) {
@@ -92,50 +108,88 @@ const StudentDashboard = () => {
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="p-6 text-slate-500 font-bold uppercase text-xs w-32 tracking-wider">Time</th>
-                {days.map(day => (
-                  <th key={day} className="p-6 text-slate-500 font-bold uppercase text-xs text-center border-l border-slate-200 tracking-wider">
-                    {day}
+                <th className="p-6 text-slate-500 font-bold uppercase text-xs w-32 tracking-wider">Day</th>
+                {timeslots.map(slot => (
+                  <th key={`${slot.start_time}-${slot.end_time}`} className="p-6 text-slate-500 font-bold uppercase text-xs text-center border-l border-slate-200 tracking-wider">
+                    {slot.start_time}
+                    <span className="block text-[8px] opacity-60 normal-case">{slot.end_time}</span>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {timeslots.map((slot) => (
-                <tr key={slot.id} className="group hover:bg-slate-50/30 transition-colors">
-                  <td className="p-6 align-top">
-                    <span className="text-slate-900 font-bold block">{slot.start_time}</span>
-                    <span className="text-slate-500 text-xs font-medium">{slot.end_time}</span>
-                  </td>
-                  {days.map(day => {
-                    const entry = getEntry(day, slot.id);
-                    return (
-                      <td key={`${day}-${slot.id}`} className="p-3 border-l border-slate-100 align-top h-32">
-                        {entry ? (
-                          <div className="h-full p-4 rounded-xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between group/entry hover:border-primary-300 hover:shadow-md transition-all cursor-pointer">
-                            <div>
-                              <div className="text-[10px] font-bold text-primary-600 uppercase tracking-widest mb-1.5 px-2 py-0.5 bg-primary-50 rounded-full w-fit">
-                                {entry.subject.name}
+              {days.map((day) => {
+                let colSkips = 0;
+                return (
+                  <tr key={day} className="group">
+                    <td className="p-6 bg-slate-50/50 border-r border-slate-100 align-top font-bold text-slate-900 border-b border-slate-100">
+                      {day}
+                    </td>
+                    {timeslots.map((slot, colIndex) => {
+                      if (colSkips > 0) {
+                        colSkips--;
+                        return null;
+                      }
+
+                      const entry = getEntry(day, slot);
+                      let span = 1;
+
+                      if (entry) {
+                        const isLab = entry.subject.name.toLowerCase().includes('lab');
+                        const isProject = entry.subject.name.toLowerCase().includes('project');
+
+                        if (isLab || isProject) {
+                           let matchCount = 0;
+                           for (let j = 1; j <= 2; j++) {
+                             const nextSlot = timeslots[colIndex + j];
+                             if (nextSlot) {
+                               const nextEntry = getEntry(day, nextSlot);
+                               if (nextEntry && nextEntry.subject_id === entry.subject_id) {
+                                 matchCount++;
+                               } else {
+                                 break;
+                               }
+                             }
+                           }
+                           if (matchCount === 2) {
+                             span = 3;
+                             colSkips = 2;
+                           }
+                        }
+                      }
+
+                      return (
+                        <td 
+                          key={`${day}-${slot.start_time}`} 
+                          colSpan={span}
+                          className={`p-3 border-l border-slate-100 align-top h-32 group-hover:bg-slate-50/30 transition-colors ${span > 1 ? 'min-w-[400px]' : 'min-w-[150px]'}`}
+                        >
+                          {entry ? (
+                            <div className={`h-full p-4 rounded-xl bg-white border border-slate-200 shadow-sm flex flex-col justify-between group/entry hover:border-primary-300 hover:shadow-md transition-all cursor-pointer ${span > 1 ? 'bg-indigo-50/10 border-indigo-200 items-center text-center' : ''}`}>
+                              <div className={span > 1 ? 'flex flex-col items-center' : ''}>
+                                <div className={`text-[10px] font-bold uppercase tracking-widest mb-1.5 px-2 py-0.5 rounded-full w-fit ${span > 1 ? 'bg-indigo-100 text-indigo-700 mx-auto' : 'bg-primary-50 text-primary-600'}`}>
+                                  {entry.subject.name}
+                                </div>
+                                <div className="text-sm font-bold text-slate-900 leading-snug px-1">
+                                  Prof. {entry.teacher.name}
+                                </div>
                               </div>
-                              <div className="text-sm font-bold text-slate-900 leading-snug px-1">
-                                Prof. {entry.teacher.name}
+                              <div className={`flex items-center text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-3 px-1 ${span > 1 ? 'justify-center' : ''}`}>
+                                <MapPin size={10} className="mr-1.5 text-slate-300" />
+                                {entry.room.room_number}
                               </div>
                             </div>
-                            <div className="flex items-center text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-3 px-1">
-                              <MapPin size={10} className="mr-1.5 text-slate-300" />
-                              Room {entry.room.room_number}
+                          ) : (
+                            <div className="h-full flex items-center justify-center">
+                              <div className="w-1.5 h-1.5 rounded-full bg-slate-200"></div>
                             </div>
-                          </div>
-                        ) : (
-                          <div className="h-full flex items-center justify-center">
-                            <div className="w-1.5 h-1.5 rounded-full bg-slate-200"></div>
-                          </div>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
