@@ -5,7 +5,8 @@ export const getItems = async (model, req, res) => {
     const items = await prisma[model].findMany();
     res.json(items);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(`Get ${model} error:`, error);
+    res.status(500).json({ error: 'Failed to fetch items' });
   }
 };
 
@@ -14,29 +15,40 @@ export const createItem = async (model, req, res) => {
     const item = await prisma[model].create({ data: req.body });
     res.json(item);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(`Create ${model} error:`, error);
+    res.status(500).json({ error: 'Failed to create item' });
   }
 };
 
 export const updateItem = async (model, req, res) => {
   try {
     const { id } = req.params;
+    const numericId = parseInt(id);
+    if (isNaN(numericId)) {
+      return res.status(400).json({ error: 'Invalid ID' });
+    }
     const item = await prisma[model].update({
-      where: { id: parseInt(id) },
+      where: { id: numericId },
       data: req.body,
     });
     res.json(item);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(`Update ${model} error:`, error);
+    res.status(500).json({ error: 'Failed to update item' });
   }
 };
 
 export const deleteItem = async (model, req, res) => {
   try {
     const { id } = req.params;
-    await prisma[model].delete({ where: { id: parseInt(id) } });
+    const numericId = parseInt(id);
+    if (isNaN(numericId)) {
+      return res.status(400).json({ error: 'Invalid ID' });
+    }
+    await prisma[model].delete({ where: { id: numericId } });
     res.json({ message: 'Item deleted' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(`Delete ${model} error:`, error);
+    res.status(500).json({ error: 'Failed to delete item' });
   }
 };

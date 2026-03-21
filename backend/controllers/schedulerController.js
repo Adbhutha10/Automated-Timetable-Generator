@@ -24,6 +24,19 @@ export const generateTimetable = async (req, res) => {
       return dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day);
     });
 
+    if (teachers.length === 0) {
+      isGenerating = false;
+      return res.status(400).json({ error: 'No teachers found in registry. Please add teachers first.' });
+    }
+    if (rooms.length === 0) {
+      isGenerating = false;
+      return res.status(400).json({ error: 'No rooms found in registry. Please add rooms first.' });
+    }
+    if (timeslots.length === 0) {
+      isGenerating = false;
+      return res.status(400).json({ error: 'No timeslots defined. Please add timeslots first.' });
+    }
+
     const timetableEntries = [];
     const usedSlots = new Set(); // To track teacher-slot, room-slot, class-slot conflicts
 
@@ -54,7 +67,9 @@ export const generateTimetable = async (req, res) => {
     );
 
     // Find or create the "Mini Project / Internship" subject to ensure it exists
-    let projectSubject = await prisma.subject.findFirst({ where: { name: 'Mini Project / Internship' } });
+    let projectSubject = await prisma.subject.findFirst({ 
+      where: { name: { contains: 'Mini Project' } } 
+    });
     if (!projectSubject) {
       projectSubject = await prisma.subject.create({
         data: { name: 'Mini Project / Internship', department: 'CSE', hours_per_week: 3 }
@@ -205,9 +220,13 @@ export const generateTimetable = async (req, res) => {
 
 export const getTimetableByClass = async (req, res) => {
   const { classId } = req.params;
+  const id = parseInt(classId);
+  if (isNaN(id)) {
+    return res.status(400).json({ error: 'Invalid Class ID' });
+  }
   try {
     const timetable = await prisma.timetable.findMany({
-      where: { class_id: parseInt(classId) },
+      where: { class_id: id },
       include: {
         subject: true,
         teacher: true,
@@ -217,15 +236,20 @@ export const getTimetableByClass = async (req, res) => {
     });
     res.json(timetable);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Get timetable by class error:', error);
+    res.status(500).json({ error: 'Failed to fetch timetable' });
   }
 };
 
 export const getTimetableByTeacher = async (req, res) => {
   const { teacherId } = req.params;
+  const id = parseInt(teacherId);
+  if (isNaN(id)) {
+    return res.status(400).json({ error: 'Invalid Teacher ID' });
+  }
   try {
     const timetable = await prisma.timetable.findMany({
-      where: { teacher_id: parseInt(teacherId) },
+      where: { teacher_id: id },
       include: {
         subject: true,
         class: true,
@@ -235,15 +259,20 @@ export const getTimetableByTeacher = async (req, res) => {
     });
     res.json(timetable);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Get timetable by teacher error:', error);
+    res.status(500).json({ error: 'Failed to fetch timetable' });
   }
 };
 
 export const getTimetableByRoom = async (req, res) => {
   const { roomId } = req.params;
+  const id = parseInt(roomId);
+  if (isNaN(id)) {
+    return res.status(400).json({ error: 'Invalid Room ID' });
+  }
   try {
     const timetable = await prisma.timetable.findMany({
-      where: { room_id: parseInt(roomId) },
+      where: { room_id: id },
       include: {
         subject: true,
         class: true,
@@ -253,6 +282,7 @@ export const getTimetableByRoom = async (req, res) => {
     });
     res.json(timetable);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Get timetable by room error:', error);
+    res.status(500).json({ error: 'Failed to fetch timetable' });
   }
 };

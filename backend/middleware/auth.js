@@ -44,7 +44,11 @@ export const isTeacherOwner = async (req, res, next) => {
   if (role === 'ADMIN') return next();
   
   try {
-    const teacher = await prisma.teacher.findUnique({ where: { id: parseInt(teacherId) } });
+    const id = parseInt(teacherId);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: 'Invalid Teacher ID' });
+    }
+    const teacher = await prisma.teacher.findUnique({ where: { id } });
     if (!teacher || teacher.email !== email) {
       return res.status(403).json({ message: 'Access denied: You can only view your own schedule' });
     }
@@ -60,7 +64,12 @@ export const isStudentOfClass = (req, res, next) => {
 
   if (role === 'ADMIN' || role === 'TEACHER') return next();
   
-  if (parseInt(classId) !== class_id) {
+  const id = parseInt(classId);
+  if (isNaN(id)) {
+    return res.status(400).json({ message: 'Invalid Class ID' });
+  }
+
+  if (id !== class_id) {
     return res.status(403).json({ message: 'Access denied: You can only view your assigned class schedule' });
   }
   next();
