@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -10,8 +10,11 @@ import {
   Calendar, 
   LogOut,
   ChevronRight,
-  Home as HomeIcon
+  Home as HomeIcon,
+  Menu,
+  X
 } from 'lucide-react';
+
 import { Navigate } from 'react-router-dom';
 
 import { useAuth } from './context/AuthContext';
@@ -45,6 +48,13 @@ const App = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
 
   const handleLogout = () => {
     logout();
@@ -92,11 +102,38 @@ const App = () => {
 
   return (
     <div className="flex min-h-screen bg-slate-50">
+      
+      {/* Mobile Top Bar */}
+      {user && location.pathname !== '/' && (
+        <div className="md:hidden fixed top-0 w-full bg-white/70 backdrop-blur-xl border-b border-slate-200 h-16 z-30 flex items-center justify-between px-4">
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate('/')}>
+            <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+              <Calendar className="text-white" size={18} />
+            </div>
+            <span className="text-lg font-bold text-slate-900 tracking-tight">Schedulify</span>
+          </div>
+          <button 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
+      )}
+
+      {/* Mobile Overlay */}
+      {user && isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar - only show if user is logged in and not on a public page */}
       {user && (
-        <aside className="w-64 bg-white/70 backdrop-blur-xl border-r border-slate-200 flex flex-col fixed h-full z-20">
+        <aside className={`w-64 bg-white/70 backdrop-blur-xl border-r border-slate-200 flex flex-col fixed inset-y-0 left-0 z-40 transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
           <div className="p-8">
-            <div className="flex items-center space-x-3 mb-10 cursor-pointer" onClick={() => navigate('/')}>
+            <div className="hidden md:flex items-center space-x-3 mb-10 cursor-pointer" onClick={() => navigate('/')}>
               <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary-900/20">
                 <Calendar className="text-white" size={24} />
               </div>
@@ -148,7 +185,7 @@ const App = () => {
 
 
       {/* Main Content */}
-      <main className={`flex-1 ${user ? 'ml-64' : ''} p-8`}>
+      <main className={`flex-1 ${user ? 'md:ml-64' : ''} p-4 pt-20 md:p-8 md:pt-8 w-full`}>
         <div className="max-w-7xl mx-auto h-full">
           <Routes>
             <Route path="/" element={<DashboardRedirect />} />
